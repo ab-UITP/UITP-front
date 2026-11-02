@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Поликарты · подключение к матчу</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=Unbounded:wght@600;800&display=swap">
+<style>
+/* Дизайн перенесён из прототипа «Поликарты» (тёмная тема, Unbounded/Onest). */
+:root {
+  --ground: #09090b;
+  --surface: #18181b;
+  --raised: #27272a;
+  --border: #3f3f46;
+  --text: #fafafa;
+  --muted: #a1a1aa;
+  --primary: #34d399;
+  --danger: #f87171;
+  --font-ui: "Onest", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Unbounded", "Onest", system-ui, sans-serif;
+  color-scheme: dark;
+}
+html, body { background: var(--ground); color: var(--text); }
+body { font-family: var(--font-ui); font-size: 15px; line-height: 1.45; margin: 0; padding: 16px 16px 40px; }
+* { box-sizing: border-box; }
+h1, h2, h3 { text-wrap: balance; margin: 0; }
+
+.board { max-width: 1280px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+.device { background: var(--ground); border: 1px solid var(--border); border-radius: 16px; min-height: 720px; display: flex; flex-direction: column; overflow: hidden; }
+.topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 24px; border-bottom: 1px solid var(--surface); flex-wrap: wrap; }
+.me-chip { display: flex; align-items: center; gap: 10px; color: var(--muted); }
+.logo { font-family: var(--font-display); font-weight: 800; letter-spacing: 0.04em; color: var(--primary); font-size: 15px; }
+.center-screen { flex: 1; display: grid; place-items: center; padding: 32px 16px; }
+.panel { width: min(440px, 100%); display: flex; flex-direction: column; gap: 18px; align-items: stretch; text-align: center; }
+.panel h1 { font-family: var(--font-display); font-weight: 600; font-size: 28px; }
+.panel .sub { color: var(--muted); margin: -8px 0 0; }
+.panel .big-logo { font-family: var(--font-display); font-weight: 800; font-size: 44px; color: var(--primary); letter-spacing: 0.02em; }
+.field { display: flex; flex-direction: column; gap: 6px; text-align: left; }
+.field label { font-size: 13px; color: var(--muted); }
+.status-row { display: flex; gap: 10px; align-items: center; justify-content: center; color: var(--muted); }
+.status-row .p-progressspinner { flex: none; margin: 0; }
+.vs { display: flex; align-items: center; justify-content: center; gap: 40px; flex-wrap: wrap; }
+.vs .who { display: flex; flex-direction: column; align-items: center; gap: 10px; font-weight: 600; font-size: 20px; }
+.vs .x { font-family: var(--font-display); font-size: 40px; color: var(--primary); font-weight: 800; }
+.demo-note { font-size: 12px; color: var(--muted); }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script src="/vendor/vue.global.prod.js"></script>
+<script src="/vendor/primevue.min.js"></script>
+<script src="/vendor/aura.min.js"></script>
+<script>
+const { createApp, reactive, computed, onMounted, onUnmounted } = Vue;
+
+/* ---------- состояние ---------- */
+const LS_KEY = 'polycards.join.v1';
+function loadIdentity() {
+  try { const v = JSON.parse(localStorage.getItem(LS_KEY)); if (v && v.playerId && v.name) return v; } catch (e) {}
+  return { playerId: (crypto.randomUUID ? crypto.randomUUID() : 'p-' + Math.random().toString(36).slice(2)), name: '' };
+}
+const id = loadIdentity();
+
+const App = {
+  setup() {
+    const s = reactive({
+      screen: 'connect',          // connect | offline | name | menu | lobby | join | found | closed
+      playerId: id.playerId,
+      name: id.name,
+      inviteCode: '',             // код из ссылки, если открыли приглашение
+      code: '',                   // код текущего матча (хост или гость)
+      match: null,                // последний ответ сервера: {status, hostName, guestName, youAre, closeReason}
+      nameInvalid: false,
+      joinError: '',
+      closedText: '',
+      copied: false,
+      connected: false,           // на found: прошло 2.2с — показать «соединение установлено»
+    });
+    let pollTimer = null;
+    let foundTimer = null;
+
+    const nameInvalid = computed(() => {
+      const n = s.name.trim();
+      return !(n.length >= 3 && n.length <= 16);
+    });
+    const initial = computed(() => (s.name.trim()[0] || '?').toUpperCase());
+    // на экране found: слева — сам игрок, справа — соперник
+    const meName = computed(() => !s.match ? s.name : (s.match.youAre === 'host' ? s.match.hostName : (s.match.guestName || s.name)));
+    const oppName = computed(() => !s.match ? '' : (s.match.youAre === 'host' ? (s.match.guestName || '…') : s.match.hostName));
+    const meInitial = computed(() => (meName.value[0] || '?').toUpperCase());
+    const oppInitial = computed(() => (oppName.value[0] || '?').toUpperCase());
+    const hostInitial = computed(() => (s.match && s.match.hostName ? s.match.hostName[0].toUpperCase() : '?'));
+    const inviteLink = computed(() => s.code ? `${location.origin}/m/${s.code}` : '');
+
+    /* ---------- навигация ---------- */
+    function goMenu() { stopPoll(); s.code = ''; s.match = null; history.replaceState(null, '', '/'); s.screen = 'menu'; }
+    function goName(fromInvite) { s.screen = 'name'; s.fromInvite = !!fromInvite; }
+    function goOffline() { stopPoll(); s.screen = 'offline'; }
+
+    /* ---------- API ---------- */
+    async function api(path, opts) {
+      const res = await fetch(path, opts);
+      const body = await res.json().catch(() => ({}));
+      return { ok: res.ok, status: res.status, body };
+    }
+
+    /* ---------- старт: пинг сервера и разбор ссылки ---------- */
+    async function init() {
+      const m = location.pathname.match(/^\/m\/([A-Za-z0-9]{4,12})\/?$/);
+      s.inviteCode = m ? m[1].toUpperCase() : (new URLSearchParams(location.search).get('code') || '').toUpperCase();
+      let alive = false;
+      try { const r = await api('/api/health'); alive = !!r.body.ok; } catch (e) { alive = false; }
+      if (!alive) { goOffline(); return; }
+      if (s.inviteCode) {
+        s.code = s.inviteCode;
+        if (!s.name.trim()) { goName(true); return; }
+        await enterByCode();          // узнаём роль у сервера (хост открыл свою ссылку? гость?)
+      } else if (!s.name.trim()) {
+        goName(false);
+      } else {
+        s.screen = 'menu';
+      }
+    }
+
+    // текст для закрытого матча (по роли и причине)
+    function closedTextFor(m) {
+      if (m.closeReason === 'LEFT' && m.youAre === 'host') return 'Соперник вышел из матча.';
+      return 'Матч отменён. Попросите новую ссылку.';
+    }
+
+    // состояние существующего матча по коду: куда идти этому игроку
+    async function enterByCode() {
+      const r = await api(`/api/matches/${s.code}?playerId=${encodeURIComponent(s.playerId)}`);
+      if (!r.ok) { s.closedText = 'Ссылка больше не работает: матч отменён или не существует. Попросите новую ссылку.'; s.screen = 'closed'; return; }
+      s.match = r.body;
+      if (r.body.status === 'CLOSED') { s.closedText = closedTextFor(r.body); s.screen = 'closed'; return; }
+      if (r.body.youAre === 'host') { s.screen = r.body.status === 'WAITING' ? 'lobby' : 'found'; startPoll(); return; }
+      if (r.body.youAre === 'guest') { s.screen = r.body.status === 'READY' ? 'found' : 'join'; startPoll(); return; }
+      if (r.body.status === 'WAITING') { s.screen = 'join'; startPoll(); return; } // гость ещё не присоединился
+      s.joinError = 'Ссылка больше не работает: матч отменён или в нём уже два игрока. Попросите новую ссылку.';
+      s.screen = 'join';
+    }
+
+    /* ---------- имя ---------- */
+    function saveName() {
+      if (nameInvalid.value) { s.nameInvalid = true; return; }
+      s.nameInvalid = false;
+      id.name = s.name.trim();
+      localStorage.setItem(LS_KEY, JSON.stringify({ playerId: id.playerId, name: id.name }));
+      if (s.inviteCode) enterByCode(); else s.screen = 'menu';
+    }
+
+    /* ---------- хост: создать матч ---------- */
+    async function createMatch() {
+      const r = await api('/api/matches', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ playerId: s.playerId, name: s.name.trim() }),
+      });
+      if (!r.ok) { goOffline(); return; }
+      s.code = r.body.code;
+      s.match = r.body;
+      history.replaceState(null, '', `/m/${s.code}`); // ссылку можно обновить — вы останетесь хостом
+      s.screen = 'lobby';
+      startPoll();
+    }
+
+    /* ---------- гость: присоединиться ---------- */
+    async function joinMatch() {
+      s.joinError = '';
+      const r = await api(`/api/matches/${s.code}/join`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ playerId: s.playerId, name: s.name.trim() }),
+      });
+      if (!r.ok) { s.joinError = r.body.message || 'Ссылка больше не работает. Попросите новую ссылку.'; return; }
+      s.match = r.body;
+      s.connected = false;
+      s.screen = 'found';
+      armFoundNote();
+    }
+
+    /* ---------- выход / отмена ---------- */
+    async function leave() {
+      if (s.code) {
+        await api(`/api/matches/${s.code}/leave`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ playerId: s.playerId }),
+        }).catch(() => {});
+      }
+      goMenu();
+    }
+
+    /* ---------- polling состояния матча ---------- */
+    async function poll() {
+      if (!s.code || ['connect', 'offline', 'name', 'menu', 'closed'].includes(s.screen)) return;
+      const r = await api(`/api/matches/${s.code}?playerId=${encodeURIComponent(s.playerId)}`).catch(() => null);
+      if (!r) return; // сеть моргнула — попробуем на следующем тике
+      if (r.status === 404) { s.closedText = 'Матч не найден: он отменён или завершён.'; s.screen = 'closed'; stopPoll(); return; }
+      s.match = r.body;
+      if (r.body.status === 'READY' && ['lobby', 'join'].includes(s.screen)) {
+        s.connected = false; s.screen = 'found'; armFoundNote();
+      }
+      if (r.body.status === 'CLOSED' && ['lobby', 'join', 'found'].includes(s.screen)) {
+        s.closedText = closedTextFor(r.body);
+        s.screen = 'closed'; stopPoll();
+      }
+    }
+    function startPoll() { if (!pollTimer) pollTimer = setInterval(poll, 1500); }
+    function stopPoll() { clearInterval(pollTimer); pollTimer = null; }
+    function armFoundNote() { clearTimeout(foundTimer); foundTimer = setTimeout(() => { s.connected = true; }, 2200); }
+
+    /* ---------- копирование ссылки ---------- */
+    async function copy() {
+      try { await navigator.clipboard.writeText(inviteLink.value); s.copied = true; }
+      catch (e) {
+        const el = document.getElementById('invite');
+        if (el) { el.focus(); el.select(); document.execCommand('copy'); s.copied = true; }
+      }
+      setTimeout(() => s.copied = false, 1800);
+    }
+
+    onMounted(init);
+    onUnmounted(() => { stopPoll(); clearTimeout(foundTimer); });
+
+    return { s, nameInvalid, initial, meName, oppName, meInitial, oppInitial, hostInitial, inviteLink, saveName, createMatch, joinMatch, leave, copy };
+  },
+  template: `
+  <div class="board">
+    <div class="device">
+      <div class="topbar" v-if="['menu','lobby','join','found'].includes(s.screen)">
+        <span class="logo">ПОЛИКАРТЫ</span>
+        <div class="me-chip" v-if="s.name"><Avatar :label="initial" shape="circle" />{{ s.name }}</div>
+      </div>
+
+      <!-- 1. Подключение -->
+      <div class="center-screen" v-if="s.screen==='connect'">
+        <div class="panel" style="align-items:center">
+          <ProgressSpinner style="width:56px;height:56px" strokeWidth="4" />
+          <h1>Подключение к серверу…</h1>
+          <p class="sub">Это займёт пару секунд</p>
+        </div>
+      </div>
+
+      <!-- 1a. Нет соединения -->
+      <div class="center-screen" v-if="s.screen==='offline'">
+        <div class="panel">
+          <h1>Нет соединения</h1>
+          <Message severity="error">Сервер игры не отвечает. Проверьте сеть и попробуйте ещё раз.</Message>
+          <Button label="Повторить" @click="location.reload()" />
+        </div>
+      </div>
+
+      <!-- 2. Имя игрока -->
+      <div class="center-screen" v-if="s.screen==='name'">
+        <form class="panel" @submit.prevent="saveName">
+          <h1>{{ s.fromInvite ? 'Вас пригласили в матч' : 'Как вас зовут?' }}</h1>
+          <p class="sub" v-if="s.fromInvite">Сначала представьтесь — это имя увидит соперник</p>
+          <p class="sub" v-else>От 3 до 16 символов, это имя увидит соперник</p>
+          <div class="field">
+            <label for="player-name">Имя игрока</label>
+            <InputText id="player-name" v-model="s.name" :invalid="nameInvalid && s.nameInvalid" autocomplete="nickname" />
+            <Message v-if="s.nameInvalid && nameInvalid" severity="error" size="small">Имя должно быть от 3 до 16 символов</Message>
+          </div>
+          <Button type="submit" label="Продолжить" :disabled="nameInvalid" />
+        </form>
+      </div>
+
+      <!-- 3. Главное меню -->
+      <div class="center-screen" v-if="s.screen==='menu'">
+        <div class="panel">
+          <div class="big-logo">ПОЛИКАРТЫ</div>
+          <p class="sub" style="margin:0">Привет, {{ s.name }}! Сыграем?</p>
+          <Button label="Создать матч" @click="createMatch" />
+          <Button label="Сменить имя" variant="text" severity="secondary" @click="s.fromInvite=false; s.screen='name'" />
+        </div>
+      </div>
+
+      <!-- 4. Лобби (хост) -->
+      <div class="center-screen" v-if="s.screen==='lobby'">
+        <div class="panel">
+          <h1>Матч создан</h1>
+          <p class="sub">Отправьте ссылку второму игроку. Он попадёт в матч сразу.</p>
+          <div class="field">
+            <label for="invite">Ссылка-приглашение</label>
+            <InputGroup>
+              <InputText id="invite" :modelValue="inviteLink" readonly />
+              <Button :label="s.copied ? 'Скопировано' : 'Скопировать'" :severity="s.copied ? 'success' : undefined" @click="copy" />
+            </InputGroup>
+          </div>
+          <div class="status-row"><ProgressSpinner style="width:18px;height:18px" strokeWidth="6" />Ждём второго игрока…</div>
+          <Button label="Отменить матч" variant="text" severity="secondary" @click="leave" />
+        </div>
+      </div>
+
+      <!-- 5. Приглашение (гость) -->
+      <div class="center-screen" v-if="s.screen==='join'">
+        <div class="panel">
+          <template v-if="!s.joinError">
+            <Avatar :label="hostInitial" size="xlarge" shape="circle" style="align-self:center" />
+            <h1>{{ s.match && s.match.hostName ? s.match.hostName : 'Соперник' }} зовёт вас в матч</h1>
+            <p class="sub">Вы открыли ссылку-приглашение /m/{{ s.code }}</p>
+            <Button label="Присоединиться" @click="joinMatch" />
+          </template>
+          <template v-else>
+            <h1>Матч недоступен</h1>
+            <Message severity="error">{{ s.joinError }}</Message>
+          </template>
+          <Button label="В меню" variant="text" severity="secondary" @click="leave" />
+        </div>
+      </div>
+
+      <!-- 6. Соперник найден -->
+      <div class="center-screen" v-if="s.screen==='found' && s.match">
+        <div class="panel" style="width:min(640px,100%);align-items:center">
+          <Tag value="Соперник найден" severity="success" style="align-self:center" />
+          <div class="vs">
+            <div class="who"><Avatar :label="meInitial" size="xlarge" shape="circle" />{{ meName }}</div>
+            <span class="x">VS</span>
+            <div class="who"><Avatar :label="oppInitial" size="xlarge" shape="circle" />{{ oppName }}</div>
+          </div>
+          <div class="status-row" v-if="!s.connected"><ProgressSpinner style="width:18px;height:18px" strokeWidth="6" />Тасуем колоды…</div>
+          <template v-else>
+            <Message severity="success" :closable="false">Оба игрока в одном матче — подключение по ссылке работает. Игровая логика (тренеры, раунды, колоды) — следующий этап.</Message>
+            <Button label="Выйти из матча" severity="secondary" @click="leave" />
+          </template>
+        </div>
+      </div>
+
+      <!-- Матч закрыт -->
+      <div class="center-screen" v-if="s.screen==='closed'">
+        <div class="panel">
+          <h1>Матч недоступен</h1>
+          <Message severity="warn">{{ s.closedText || 'Матч завершён.' }}</Message>
+          <Button label="В меню" @click="leave" />
+        </div>
+      </div>
+    </div>
+  </div>`,
+};
+
+const app = createApp(App);
+app.use(PrimeVue.Config, { theme: { preset: PrimeVue.Themes.Aura, options: { darkModeSelector: '.app-dark' } } });
+document.documentElement.classList.add('app-dark');
+for (const n of ['Button', 'InputText', 'InputGroup', 'Tag', 'Avatar', 'ProgressSpinner', 'Message']) app.component(n, PrimeVue[n]);
+app.mount('#app');
+</script>
+</body>
+</html>
