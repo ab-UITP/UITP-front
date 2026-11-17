@@ -45,10 +45,19 @@ describe('calcStrength', () => {
       el: 'morality',
       adv: 1.25,
       advPts: 38,
-      buffs: 25,
+      buffs: 40,
       debuffs: 20,
-      total: 193,
+      total: 208,
     })
+  })
+
+  it('doubles a debuff when the victim team profile is the one it beats', () => {
+    const mine = player('luck', 100)
+    const me = side({ table: [mine] })
+    const opponent = side({ table: [player('luck', 10)], played: [{ card: effect('debuff', 'erudition', 150), target: mine.id }] })
+    expect(calcStrength(me, opponent).debuffs).toBe(300)
+    const wrong = side({ table: [player('luck', 10)], played: [{ card: effect('debuff', 'luck', 150), target: mine.id }] })
+    expect(calcStrength(me, wrong).debuffs).toBe(150)
   })
 
   it('ignores effects whose target left the table', () => {
