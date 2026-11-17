@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "feod": {
+      "source": "Sdju/feod",
+      "sourceType": "github",
+      "skillPath": "skills/feod/SKILL.md",
+      "computedHash": "2e7479c80500df9a296003725bc06f689fcee767742151463061e9b8eaa1c05a"
+    }
+  }
+}

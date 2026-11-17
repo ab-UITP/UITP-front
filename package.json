@@ -1,0 +1,55 @@
+{
+  "name": "uitp-front",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "packageManager": "pnpm@12.16.1",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "vue-tsc --noEmit",
+    "lint": "eslint src",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@primevue/themes": "4.2.5",
+    "@tanstack/vue-query": "^5.0.0",
+    "@vueuse/core": "^14.0.0",
+    "pinia": "^3.0.0",
+    "primevue": "4.2.5",
+    "vue": "^3.5.0",
+    "vue-router": "^4.5.0"
+  },
+  "devDependencies": {
+    "@o-feod/eslint-structure-plugin": "^0.1.7",
+    "@types/node": "^26.6.6",
+    "@vitejs/plugin-vue": "^6.0.0",
+    "@vue/test-utils": "^2.4.0",
+    "eslint": "^9.0.0",
+    "eslint-plugin-vue": "^10.0.0",
+    "happy-dom": "^20.0.0",
+    "typescript": "^5.9.0",
+    "typescript-eslint": "^8.0.0",
+    "vite": "^7.0.0",
+    "vitest": "^4.0.0",
+    "vue-eslint-parser": "^10.0.0",
+    "vue-tsc": "^3.0.0"
+  },
+  "feod": {
+    "srcRoot": "src",
+    "aliasPrefix": "@",
+    "aliasRoot": "src",
+    "layerDirs": {
+      "app": "app",
+      "pages": "pages",
+      "modules": "modules",
+      "common": "common",
+      "global": "globals"
+    },
+    "common": {
+      "maxDepth": 2
+    },
+    "modulePages": true
+  }
+}
