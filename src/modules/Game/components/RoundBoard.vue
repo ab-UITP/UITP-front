@@ -5,7 +5,7 @@ import Message from 'primevue/message'
 import Tag from 'primevue/tag'
 import { computed } from 'vue'
 import type { LocalGame } from '../composables/useLocalGame'
-import { perkText } from '../rules/catalog'
+import { CARD_BACKS, perkText } from '../rules/catalog'
 import { beats, elementName } from '../rules/strength'
 import GameCard from './GameCard.vue'
 import ScoreLine from './ScoreLine.vue'
@@ -74,8 +74,8 @@ const myDebuffs = computed(() => {
       <div>
         <div class="zone-label">Бафы в руке</div>
         <div class="row">
-          <div v-for="effect in state.op.handB" :key="effect.id" class="gcard sm back buff">
-            <div class="b">П<small>БАФЫ</small></div>
+          <div v-for="effect in state.op.handB" :key="effect.id" class="gcard sm back">
+            <img class="art" :src="CARD_BACKS.effect" alt="Закрытая карта соперника" draggable="false" />
           </div>
         </div>
       </div>

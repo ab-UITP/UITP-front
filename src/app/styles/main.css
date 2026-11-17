@@ -8,9 +8,9 @@
   --muted: #a1a1aa;
   --primary: #34d399;
   --danger: #f87171;
-  --morality: #f472b6;
-  --erudition: #60a5fa;
-  --luck: #fbbf24;
+  --morality: #4a7bd8;
+  --erudition: #f0562f;
+  --luck: #3dbb61;
   --neutral: #a1a1aa;
   --buff: #4ade80;
   --debuff: #f87171;
@@ -63,36 +63,25 @@ h1, h2, h3 { text-wrap: balance; margin: 0; }
 .actions { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; align-items: center; }
 .hand-wrap { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; }
 
-/* cards */
-.gcard { --acc: var(--neutral); width: 112px; height: 160px; border-radius: 10px; border: 1.5px solid var(--acc); background: var(--surface); display: flex; flex-direction: column; overflow: hidden; position: relative; flex: none; transition: transform .15s ease, box-shadow .15s ease; text-align: left; padding: 0; color: var(--text); font: inherit; }
-.gcard.sm { width: 92px; height: 132px; }
+/* cards: макеты из PDF лежат в public/cards, на карте уже есть имя, сила и текст способности */
+.gcard { --acc: var(--neutral); --w: 140px; width: var(--w); aspect-ratio: 300 / 430; border-radius: 8px; position: relative; flex: none; transition: transform .15s ease, box-shadow .15s ease; text-align: left; padding: 0; border: 0; background: transparent; color: var(--text); font: inherit; display: block; }
+.gcard.sm { --w: 104px; }
+/* мазок вокруг силы игрока выходит за правый край на 13% ширины, оставляем под него место */
+.gcard.k-player { margin-right: calc(var(--w) * 0.13); }
+.gcard .art { position: absolute; left: 0; top: 0; height: 100%; width: auto; max-width: none; border-radius: 8px; pointer-events: none; user-select: none; }
+.gcard.k-player .art { box-shadow: none; }
 button.gcard { cursor: pointer; }
 button.gcard:hover:not(:disabled) { transform: translateY(-4px); }
 button.gcard:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
-.gcard.sel { transform: translateY(-10px); box-shadow: 0 0 0 2px var(--primary), 0 10px 30px rgba(52, 211, 153, .3); }
-.gcard.target { box-shadow: 0 0 0 2px var(--primary); animation: pulse 1.2s ease-in-out infinite; }
+.gcard.sel { transform: translateY(-10px); box-shadow: 0 0 0 3px var(--primary), 0 10px 30px rgba(52, 211, 153, .3); }
+.gcard.target { box-shadow: 0 0 0 3px var(--primary); animation: pulse 1.2s ease-in-out infinite; }
 .gcard:disabled { opacity: .45; cursor: default; }
-@keyframes pulse { 50% { box-shadow: 0 0 0 4px rgba(52, 211, 153, .35); } }
+@keyframes pulse { 50% { box-shadow: 0 0 0 6px rgba(52, 211, 153, .35); } }
 @media (prefers-reduced-motion: reduce) { .gcard, .gcard.target { animation: none; transition: none; } }
-.gcard .photo { height: 76px; background: color-mix(in srgb, var(--acc) 18%, transparent); display: grid; place-items: center; position: relative; flex: none; }
-.gcard.sm .photo { height: 58px; }
-.gcard .photo svg { width: 38px; height: 38px; stroke: var(--acc); fill: none; stroke-width: 1.6; }
-.gcard.sm .photo svg { width: 28px; height: 28px; }
-.gcard .type { position: absolute; left: 7px; top: 5px; font-size: 9px; font-weight: 700; letter-spacing: .08em; color: var(--acc); }
-.gcard .rar { position: absolute; right: 6px; top: 5px; font-size: 9px; font-weight: 700; background: var(--ground); color: var(--text); padding: 1px 5px; border-radius: 4px; }
-.gcard .body { padding: 6px 8px 8px; display: flex; flex-direction: column; gap: 2px; flex: 1; min-height: 0; }
-.gcard .nm { font-weight: 600; font-size: 12px; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.gcard.sm .nm { font-size: 11px; -webkit-line-clamp: 1; }
 .status-row .p-progressspinner { flex: none; margin: 0; }
-.gcard .flag { position: absolute; left: 6px; bottom: 6px; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 4px; background: var(--ground); }
-.gcard .el { font-size: 10px; font-weight: 500; }
-.gcard .val { margin-top: auto; font-family: var(--font-display); font-weight: 800; font-size: 20px; color: var(--acc); font-variant-numeric: tabular-nums; }
-.gcard.sm .val { font-size: 16px; }
-.gcard .perk { margin-top: auto; font-size: 10px; color: var(--muted); line-height: 1.25; }
-.gcard .mod { position: absolute; right: 6px; bottom: 6px; font-size: 11px; font-weight: 700; padding: 1px 5px; border-radius: 4px; background: var(--ground); }
-.gcard.back { display: grid; place-items: center; background: color-mix(in srgb, var(--acc) 20%, var(--surface)); }
-.gcard.back .b { font-family: var(--font-display); font-weight: 800; font-size: 34px; color: var(--acc); text-align: center; line-height: 1; }
-.gcard.back .b small { display: block; font-family: var(--font-ui); font-size: 9px; letter-spacing: .1em; margin-top: 6px; }
+.gcard .flag { position: absolute; left: 6px; top: 6px; font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 4px; background: var(--ground); }
+.gcard .mod { position: absolute; right: 6px; top: 6px; font-size: 12px; font-weight: 700; padding: 1px 6px; border-radius: 4px; background: var(--ground); }
+.gcard.back { display: block; }
 .morality { --acc: var(--morality); } .erudition { --acc: var(--erudition); } .luck { --acc: var(--luck); }
 .tx-morality { color: var(--morality); } .tx-erudition { color: var(--erudition); } .tx-luck { color: var(--luck); } .tx-neutral { color: var(--neutral); }
 .buff { --acc: var(--buff); } .debuff { --acc: var(--debuff); }

@@ -3,9 +3,9 @@ import type { EffectCard, Element, PlayerCard, Side, TrainerCard } from '../type
 import { beats, calcStrength, teamElement } from './strength'
 
 let id = 0
-const player = (el: Element, str: number): PlayerCard => ({ id: ++id, kind: 'player', el, name: 'p', str, rar: 'R' })
-const trainer = (el: Element, coef: number): TrainerCard => ({ id: ++id, kind: 'trainer', el, name: 't', coef })
-const effect = (kind: EffectCard['kind'], el: Element | null, val: number): EffectCard => ({ id: ++id, kind, el, name: 'e', val })
+const player = (el: Element, str: number): PlayerCard => ({ id: ++id, kind: 'player', el, name: 'p', str, rar: 'R', art: '', perk: '' })
+const trainer = (el: Element, coef: number): TrainerCard => ({ id: ++id, kind: 'trainer', el, name: 't', coef, art: '', perk: '' })
+const effect = (kind: EffectCard['kind'], el: Element | null, val: number): EffectCard => ({ id: ++id, kind, el, name: 'e', val, art: '', perk: '' })
 
 function side(patch: Partial<Side>): Side {
   return { name: 's', deckP: [], deckB: [], trainers: [], trainer: null, table: [], handP: [], handB: [], played: [], wins: 0, ...patch }
