@@ -3,9 +3,9 @@ import type { EffectCard, Element, PlayerCard, Side, TrainerCard } from '../type
 import { beats, calcStrength, teamElement } from './strength'
 
 let id = 0
-const player = (el: Element, str: number): PlayerCard => ({ id: ++id, kind: 'player', el, name: 'p', str, rar: 'R' })
-const trainer = (el: Element, coef: number): TrainerCard => ({ id: ++id, kind: 'trainer', el, name: 't', coef })
-const effect = (kind: EffectCard['kind'], el: Element | null, val: number): EffectCard => ({ id: ++id, kind, el, name: 'e', val })
+const player = (el: Element, str: number): PlayerCard => ({ id: ++id, kind: 'player', el, name: 'p', str, rar: 'R', art: '', perk: '' })
+const trainer = (el: Element, coef: number): TrainerCard => ({ id: ++id, kind: 'trainer', el, name: 't', coef, art: '', perk: '' })
+const effect = (kind: EffectCard['kind'], el: Element | null, val: number): EffectCard => ({ id: ++id, kind, el, name: 'e', val, art: '', perk: '' })
 
 function side(patch: Partial<Side>): Side {
   return { name: 's', deckP: [], deckB: [], trainers: [], trainer: null, table: [], handP: [], handB: [], played: [], wins: 0, ...patch }
@@ -45,10 +45,19 @@ describe('calcStrength', () => {
       el: 'morality',
       adv: 1.25,
       advPts: 38,
-      buffs: 25,
+      buffs: 40,
       debuffs: 20,
-      total: 193,
+      total: 208,
     })
+  })
+
+  it('doubles a debuff when the victim team profile is the one it beats', () => {
+    const mine = player('luck', 100)
+    const me = side({ table: [mine] })
+    const opponent = side({ table: [player('luck', 10)], played: [{ card: effect('debuff', 'erudition', 150), target: mine.id }] })
+    expect(calcStrength(me, opponent).debuffs).toBe(300)
+    const wrong = side({ table: [player('luck', 10)], played: [{ card: effect('debuff', 'luck', 150), target: mine.id }] })
+    expect(calcStrength(me, wrong).debuffs).toBe(150)
   })
 
   it('ignores effects whose target left the table', () => {

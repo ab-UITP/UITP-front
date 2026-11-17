@@ -1,4 +1,5 @@
-// Расчёт силы команды из прототипа: база → тренер → стихия команды → преимущество ×1.25 → бафы/дебафы.
+// Расчёт силы команды: база → тренер → стихия команды → преимущество ×1.25 → бафы/дебафы.
+// Бафы и дебафы работают по макетам карт: значение удваивается, если профиль (стихия команды) совпадает с условием на карте.
 import type { Element, Side, Strength } from '../types/game.types'
 
 export const EL: Record<Element, { name: string; beats: Element }> = {
@@ -6,6 +7,8 @@ export const EL: Record<Element, { name: string; beats: Element }> = {
   erudition: { name: 'Эрудиция', beats: 'luck' },
   luck: { name: 'Удача', beats: 'morality' },
 }
+/** На картах: «+100 (+200 если профиль команды — Мораль)» */
+export const PROFILE_BONUS = 2
 export const ELS: Element[] = ['morality', 'erudition', 'luck']
 
 export function beats(a: Element | null, b: Element | null): boolean {
@@ -37,13 +40,11 @@ export function calcStrength(me: Side, opponent: Side): Strength {
   let debuffs = 0
   for (const played of me.played) {
     if (played.card.kind !== 'buff') continue
-    const target = me.table.find((card) => card.id === played.target)
-    if (target) buffs += played.card.val * (played.card.el && played.card.el === target.el ? 1.25 : 1)
+    if (me.table.some((card) => card.id === played.target)) buffs += played.card.val * (played.card.el && played.card.el === el ? PROFILE_BONUS : 1)
   }
   for (const played of opponent.played) {
     if (played.card.kind !== 'debuff') continue
-    const target = me.table.find((card) => card.id === played.target)
-    if (target) debuffs += played.card.val * (beats(played.card.el, target.el) ? 1.25 : 1)
+    if (me.table.some((card) => card.id === played.target)) debuffs += played.card.val * (beats(played.card.el, el) ? PROFILE_BONUS : 1)
   }
   return {
     base,

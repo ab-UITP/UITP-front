@@ -7,6 +7,10 @@ export interface PlayerCard {
   name: string
   str: number
   rar: 'R' | 'SR' | 'SSR'
+  /** Путь к макету карты из PDF */
+  art: string
+  /** Текст способности с макета */
+  perk: string
 }
 
 export interface TrainerCard {
@@ -15,6 +19,8 @@ export interface TrainerCard {
   el: Element
   name: string
   coef: number
+  art: string
+  perk: string
 }
 
 export interface EffectCard {
@@ -23,6 +29,8 @@ export interface EffectCard {
   el: Element | null
   name: string
   val: number
+  art: string
+  perk: string
 }
 
 export type GameCardData = PlayerCard | TrainerCard | EffectCard

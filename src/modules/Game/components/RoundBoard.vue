@@ -5,8 +5,8 @@ import Message from 'primevue/message'
 import Tag from 'primevue/tag'
 import { computed } from 'vue'
 import type { LocalGame } from '../composables/useLocalGame'
-import { perkText } from '../rules/catalog'
-import { beats, elementName } from '../rules/strength'
+import { CARD_BACKS, perkText } from '../rules/catalog'
+import { beats, elementName, PROFILE_BONUS, teamElement } from '../rules/strength'
 import GameCard from './GameCard.vue'
 import ScoreLine from './ScoreLine.vue'
 
@@ -23,8 +23,8 @@ const myDebuffs = computed(() => {
   let total = 0
   for (const played of state.value.me.played) {
     if (played.card.kind !== 'debuff') continue
-    const target = state.value.op.table.find((card) => card.id === played.target)
-    total += played.card.val * (target && beats(played.card.el, target.el) ? 1.25 : 1)
+    if (!state.value.op.table.some((card) => card.id === played.target)) continue
+    total += played.card.val * (beats(played.card.el, teamElement(state.value.op)) ? PROFILE_BONUS : 1)
   }
   return total ? `−${Math.round(total)}` : '0'
 })
@@ -74,8 +74,8 @@ const myDebuffs = computed(() => {
       <div>
         <div class="zone-label">Бафы в руке</div>
         <div class="row">
-          <div v-for="effect in state.op.handB" :key="effect.id" class="gcard sm back buff">
-            <div class="b">П<small>БАФЫ</small></div>
+          <div v-for="effect in state.op.handB" :key="effect.id" class="gcard sm back">
+            <img class="art" :src="CARD_BACKS.effect" alt="Закрытая карта соперника" draggable="false" />
           </div>
         </div>
       </div>

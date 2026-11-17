@@ -22,7 +22,7 @@ describe('useLocalGame', () => {
 
   it('lets a buff target only own cards and a debuff only the opponent', () => {
     const game = start()
-    const buff = { id: 900, kind: 'buff', el: null, name: 'b', val: 20 } as const
+    const buff = { id: 900, kind: 'buff', el: null, name: 'b', val: 20, art: '', perk: '' } as const
     game.state.me.handB = [buff]
     game.selectHand(buff)
     expect(game.isTarget(true)).toBe(true)
@@ -74,7 +74,7 @@ describe('useLocalGame', () => {
     const game = start()
     game.state.me.wins = 2
     game.state.op.wins = 0
-    game.state.op.table = [{ id: 901, kind: 'player', el: 'luck', name: 'o', str: 1, rar: 'R' }]
+    game.state.op.table = [{ id: 901, kind: 'player', el: 'luck', name: 'o', str: 1, rar: 'R', art: '', perk: '' }]
     game.state.op.handB = []
     game.ready()
     vi.runAllTimers()
