@@ -1,0 +1,18 @@
+# Клиент (nginx со сборкой SPA) и временный сервер подключения.
+# Запуск: docker compose up -d --build, игра на http://localhost:8080
+services:
+  web:
+    build: .
+    image: uitp-web:latest
+    container_name: cardgame-web
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "8080:80"
+
+  api:
+    build: ./server
+    image: uitp-join-api:latest
+    container_name: cardgame-api
+    restart: unless-stopped
